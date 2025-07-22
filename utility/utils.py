@@ -1,13 +1,15 @@
 import re
 import pandas as pd
 
+import torch
+
 
 def generate_csv_for_each_sample(exe_file_path, df_file_path):
     current_section = None
     rows = []
 
     # Match section headers like: 00411000 <.text>:
-    section_header_pattern = re.compile(r'^\s*[0-9a-fA-F]+ <\.(text|data)>:')
+    section_header_pattern = re.compile(r'^\s*[0-9a-fA-F]+ <\.(text|data|rdata|rsrc|bss|idata|edata|reloc)>:')
 
     # Match lines like:  411000:  55                    push   ebp
     instruction_line_pattern = re.compile(r'^\s*([0-9a-fA-F]+):\s+(.+)$')
@@ -22,7 +24,7 @@ def generate_csv_for_each_sample(exe_file_path, df_file_path):
                 current_section = section_match.group(1)
                 continue
 
-            if current_section not in ('text', 'data'):
+            if current_section not in ('text', 'data', 'rdata', 'rsrc', 'bss', 'idata', 'edata', 'reloc'):
                 continue  # Only process .text or .data sections
 
             # Check for instruction line
@@ -54,3 +56,9 @@ def generate_csv_for_each_sample(exe_file_path, df_file_path):
 
     df = pd.DataFrame(rows, columns=['Section', 'Address', 'Bytecode', 'Instruction', 'Operands'])
     df.to_csv(df_file_path, index=False)
+
+
+def generate_embeddings(model, sentences):
+    with torch.no_grad():
+        embeddings = model.encode(sentences, convert_to_numpy=True)
+    return embeddings
