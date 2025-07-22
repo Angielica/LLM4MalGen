@@ -3,6 +3,7 @@ import json
 from sentence_transformers import SentenceTransformer
 import sys
 from tqdm import tqdm
+import pandas as pd
 
 from utility.utils import *
 
