@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class Detector(nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels):
+    def __init__(self, in_channels, hidden_channels, out_channels=1):
         super().__init__()
 
         self.in_channels = in_channels
@@ -25,7 +25,7 @@ class Detector(nn.Module):
             h = torch.relu(h)
 
         out = self.out(h)
-        return torch.sigmoid(out)
+        return torch.sigmoid(out).flatten()
 
 
 

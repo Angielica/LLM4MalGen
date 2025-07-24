@@ -1,6 +1,19 @@
 {
-  "generate_csv": 1,
-  "generate_embeddings": 1,
+  "generate_csv": 0,
+  "generate_embeddings": 0,
   "section_to_analyze": ".text",
-  "language_model_id": "Salesforce/codet5-base"
+  "language_model_id": "Salesforce/codet5-base",
+  "data_area_folder": "./data",
+  "benign_data_folder": "Benign assembly",
+  "malware_data_folder": "MOTIF_disasm",
+  "train": 1,
+  "test": 1,
+  "family_to_consider": "icedid",
+  "n_mal_samples_train": 5,
+  "n_ben_samples_train": 200,
+  "seed": 87342,
+  "batch_size": 32,
+  "n_gpu": "0",
+  "lr": 1e-4,
+  "epochs": 50
 }

@@ -1,8 +1,15 @@
 import re
 import pandas as pd
+import numpy as np
 
 import torch
 
+def set_reproducibility(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.use_deterministic_algorithms = True
+    torch.backends.cudnn.benchmark = False
 
 def generate_csv_for_each_sample(exe_file_path, df_file_path):
     current_section = None
@@ -36,20 +43,22 @@ def generate_csv_for_each_sample(exe_file_path, df_file_path):
             rest = instr_match.group(2)
 
             # Split rest into bytecode and (optional) instruction & operands
-            parts = rest.split('\t')
-            bytecode = ''
-            instruction = ''
-            operands = ''
+            bytecode_instr_match = re.match(r'^((?:[0-9a-fA-F]{2}(?:\s+|$))+)(.*)', rest)
+            if bytecode_instr_match:
+                bytecode = bytecode_instr_match.group(1).strip()
+                instr_part = bytecode_instr_match.group(2).strip()
 
-            if len(parts) == 1:
-                bytecode = parts[0].strip()
-            elif len(parts) >= 2:
-                bytecode = parts[0].strip()
-                instr_parts = parts[1].strip().split(None, 1)  # Split on first space
-                if instr_parts:
+                if instr_part:
+                    instr_parts = instr_part.split(None, 1)
                     instruction = instr_parts[0]
-                    if len(instr_parts) > 1:
-                        operands = instr_parts[1]
+                    operands = instr_parts[1] if len(instr_parts) > 1 else ''
+                else:
+                    instruction = ''
+                    operands = ''
+            else:
+                bytecode = rest.strip()
+                instruction = ''
+                operands = ''
 
             row = [f'.{current_section}', address, bytecode, instruction, operands]
             rows.append(row)

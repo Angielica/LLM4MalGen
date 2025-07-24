@@ -7,13 +7,12 @@ from models.detector import Detector
 from utility.plotter import plot_training_loss
 
 class TrainerDetector:
-    def __init__(self, params):
+    def __init__(self, params, detector):
 
         self.params = params
         self.device = params['device']
 
-        self.detector = Detector(self.params['in_channels'], self.params['hidden_channels'],
-                                 self.params['out_channels'])
+        self.detector = detector
         self.optimizer = torch.optim.Adam(self.detector.parameters(), lr=params['lr'])
         self.criterion = DetectionLoss()
 
@@ -27,8 +26,7 @@ class TrainerDetector:
 
         return loss.item()
 
-
-    def train(self, train_loader, val_loader=None):
+    def train(self, train_loader):
         train_losses, val_losses = [], []
 
         start_training = time.time()
@@ -47,10 +45,10 @@ class TrainerDetector:
                 loss /= len(train_loader)
                 train_losses.append(loss)
 
-                print(f'Epoch: {epoch}, Loss: {loss}')
+                print(f'Epoch: {epoch}, Loss: {loss} \n')
 
-                with open(self.params['log_path'], 'w') as f:
-                    f.write(f'Epoch: {epoch}, Loss: {loss}')
+                with open(self.params['log_path'], 'a') as f:
+                    f.write(f'Epoch: {epoch}, Loss: {loss} \n')
 
         except KeyboardInterrupt:
             print('Training interrupted.')
@@ -60,9 +58,9 @@ class TrainerDetector:
 
         torch.save(self.detector.state_dict(), self.params['last_model_checkpoint_path'])
 
-        print(f'Elapsed time for training: {elapsed_time}')
-        with open(self.params['log_path'], 'w') as f:
-            f.write(f'Elapsed time for training: {elapsed_time}')
+        print(f'Elapsed time for training: {elapsed_time} \n')
+        with open(self.params['log_path'], 'a') as f:
+            f.write(f'Elapsed time for training: {elapsed_time} \n')
 
         plot_training_loss(train_losses, self.params)
 
