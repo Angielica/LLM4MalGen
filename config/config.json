@@ -20,7 +20,8 @@
   "n_gpu": "0",
   "lr_detector": 1e-4,
   "lr_vae": 1e-5,
-  "epochs": 50,
+  "epochs_detector": 100,
+  "epochs_vae": 250,
   "n_variants_to_generate": 25,
   "threshold": 0.5
 }

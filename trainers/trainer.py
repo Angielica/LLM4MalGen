@@ -34,7 +34,7 @@ class TrainerDetector:
         start_training = time.time()
 
         try:
-            for epoch in tqdm(range(self.params['epochs']), total=self.params['epochs']):
+            for epoch in tqdm(range(self.params['epochs_detector']), total=self.params['epochs_detector']):
                 self.detector.train()
                 loss, count = 0, 0
 
@@ -116,7 +116,7 @@ class TrainerVAE:
         start_training = time.time()
 
         try:
-            for epoch in tqdm(range(self.params['epochs']), total=self.params['epochs']):
+            for epoch in tqdm(range(self.params['epochs_vae']), total=self.params['epochs_vae']):
                 self.vae.train()
                 loss = 0
                 count = 0
@@ -125,9 +125,12 @@ class TrainerVAE:
 
                 for x, _ in train_loader:
                     x = x.to(self.device)
+                    self.optimizer.zero_grad()
 
                     x_rec, mu, log_var = self.vae(x)
                     loss_batch, mse_loss_batch, kld_loss_batch = self.criterion(x_rec, x,  mu, log_var)
+                    loss_batch.backward()
+                    self.optimizer.step()
 
                     loss += loss_batch.item()
                     mse_loss += mse_loss_batch.item()

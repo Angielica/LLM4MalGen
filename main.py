@@ -208,7 +208,6 @@ def main(fname):
     train_malware_dataset = EmbeddingDataset(train_malware_df)
     train_malware_loader = DataLoader(train_malware_dataset, shuffle=True)
 
-    params['epochs'] = 100
     params['last_vae_checkpoint_path'] = './models/vae.pt'
     params['training_loss_path'] = './plots/training_vae_loss.png'
 
