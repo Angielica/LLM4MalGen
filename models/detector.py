@@ -18,6 +18,14 @@ class Detector(nn.Module):
 
         self.out = nn.Linear(prev_dim, self.out_channels)
 
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
+
     def forward(self, emb):
         h = emb
         for layer in self.fc:

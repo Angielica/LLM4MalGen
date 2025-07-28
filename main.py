@@ -7,7 +7,8 @@ import pandas as pd
 from sklearn.metrics import classification_report, roc_auc_score, precision_recall_curve, auc
 
 from models.detector import Detector
-from trainers.trainer import TrainerDetector
+from models.vae import VAE
+from trainers.trainer import *
 from utility.utils import *
 from utility.dataloader import *
 
@@ -167,19 +168,21 @@ def main(fname):
     params['in_channels'] = train['Embedding'].values[0].shape[0]
     params['hidden_channels'] = [512, 256]
 
-    params['last_model_checkpoint_path'] = './models/detector.pt'
-    params['training_loss_path'] = './plots/training_loss.png'
+    params['last_initial_detector_checkpoint_path'] = './models/initial_detector.pt'
+    params['training_loss_path'] = './plots/training_initial_detector_loss.png'
     params['log_path'] = './results/log.txt'
 
     detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
     trainer = TrainerDetector(params, detector)
 
-    if params['train']:
+    threshold = params['threshold']
+
+    if params['train_initial_detector']:
         open(params['log_path'], 'w').close()
         trainer.train(train_loader)
 
-    if params['test']:
-        detector.load_state_dict(torch.load(params['last_model_checkpoint_path'] ))
+    if params['test_initial_detector']:
+        detector.load_state_dict(torch.load(params['last_initial_detector_checkpoint_path'] ))
 
         y_score, y_true = trainer.test(test_loader, detector)
         y_score, y_true = y_score.numpy(), y_true.numpy()
@@ -192,7 +195,62 @@ def main(fname):
         with open(params['log_path'], 'w') as f:
             f.write(f'AUC-PR: {auc_pr:.4f}, AUC: {_auc:.4f} \n')
 
-        threshold = 0.05
+        y_pred = [1 if score >= threshold else 0 for score in y_score]
+
+        report = classification_report(y_true, y_pred)
+        print(report)
+        with open(params['log_path'], 'w') as f:
+            f.write(report)
+
+    vae = VAE(p_dims=[2,256,params['in_channels']]).to(device)
+    trainer_vae = TrainerVAE(params, vae)
+
+    train_malware_dataset = EmbeddingDataset(train_malware_df)
+    train_malware_loader = DataLoader(train_malware_dataset, shuffle=True)
+
+    params['epochs'] = 100
+    params['last_vae_checkpoint_path'] = './models/vae.pt'
+    params['training_loss_path'] = './plots/training_vae_loss.png'
+
+    if params['train_vae']:
+        trainer_vae.train(train_malware_loader)
+
+    if params['generate_variants']:
+        vae.load_state_dict(torch.load(params['last_vae_checkpoint_path']))
+        n_variants_to_generate = params['n_variants_to_generate']
+        variants = vae.generate(n_variants_to_generate)
+        variants = variants.numpy()
+        variants = pd.DataFrame({'Embedding': [row.tolist() for row in variants]})
+        variants['Label'] = 1
+
+        train = pd.concat([train_malware_df, train_benign_df, variants])
+        train = train.sample(frac=1, random_state=seed).reset_index(drop=True)
+
+        train_dataset = EmbeddingDataset(train)
+        train_loader = DataLoader(train_dataset, batch_size=params['batch_size'], shuffle=True)
+
+        params['last_detector_checkpoint_path'] = './models/detector.pt'
+        params['training_loss_path'] = './plots/training_detector_loss.png'
+
+        detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
+        trainer = TrainerDetector(params, detector)
+
+        if params['train_detector']:
+            trainer.train(train_loader)
+
+        detector.load_state_dict(torch.load(params['last_detector_checkpoint_path']))
+
+        y_score, y_true = trainer.test(test_loader, detector)
+        y_score, y_true = y_score.numpy(), y_true.numpy()
+
+        _auc = roc_auc_score(y_true, y_score)
+        precision, recall, thresholds = precision_recall_curve(y_true, y_score)
+        auc_pr = auc(recall, precision)
+
+        print(f'AUC-PR: {auc_pr:.4f}, AUC: {_auc:.4f} ')
+        with open(params['log_path'], 'w') as f:
+            f.write(f'AUC-PR: {auc_pr:.4f}, AUC: {_auc:.4f} \n')
+
         y_pred = [1 if score >= threshold else 0 for score in y_score]
 
         report = classification_report(y_true, y_pred)
