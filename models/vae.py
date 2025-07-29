@@ -72,7 +72,7 @@ class VAE(nn.Module):
             z = torch.randn((n_samples, self.p_dims[0])).to(device)
             return self.decode(z), z
 
-    def generate_mu_sigma(self,x):
+    def generate_mu_sigma(self, x):
         with torch.no_grad():
             mu, log_var = self.encode(x)
             z = self.reparameterize(mu, log_var)
