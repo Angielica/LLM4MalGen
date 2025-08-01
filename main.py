@@ -144,7 +144,13 @@ def main(fname):
     _current_date = datetime.datetime.now()
 
     exp = f'epochs_detector_{epochs_detector}_n_mal_samples_{n_mal_samples_train}_ben_samples_{n_ben_samples_train}_family_{family_to_consider}_oversampling_{do_oversampling}_oversampling_vae_{do_oversampling_vae}_num_over_samples_{n_oversampling}'
-    params['log_path'] = f'./results/log_{exp}.txt'
+
+    _current_date = _current_date.strftime("%Y-%m-%d_%H-%M-%S")
+
+    for d in dir:
+        os.mkdir(os.path.join(d, _current_date))
+
+    params['log_path'] = f'./results/{_current_date}/log_{exp}.txt'
 
     print('[INFO] Load dataset.')
     with open(params['log_path'], 'a') as f:
@@ -161,8 +167,22 @@ def main(fname):
     malware_df = malware_df[malware_df['Family'] == family_to_consider]
 
     print(f'\n There are {malware_df.shape[0]} malware samples belonging to the family: {family_to_consider}')
-    train_malware_df = malware_df.sample(n=n_mal_samples_train, random_state=seed)
-    test_malware_df = malware_df.drop(train_malware_df.index)
+
+    if params['random_sampling_malware']:
+        train_malware_df = malware_df.sample(n=n_mal_samples_train, random_state=seed)
+        test_malware_df = malware_df.drop(train_malware_df.index)
+    else:
+        df_date = pd.read_csv(os.path.join(data_area_folder, family_to_consider + '.csv'), sep=';', names=['Sample Name', 'Creation Date', 'First Summission Date'])
+        df_date['Creation Date'] = pd.to_datetime(df_date['Creation Date'], errors='coerce')
+        df_date['First Summission Date'] = pd.to_datetime(df_date['First Summission Date'], errors='coerce')
+
+        malware_df_merged = malware_df.merge(df_date, on='Sample Name')
+        malware_df_sorted = malware_df_merged.sort_values(by='Creation Date')
+        malware_df_sorted = malware_df_sorted.reset_index(drop=True)
+
+        train_malware_df = malware_df_sorted[:params['n_mal_samples_train']]
+        test_malware_df = malware_df_sorted[params['n_mal_samples_train']:]
+
 
     train_benign_df = benign_df.sample(n=n_ben_samples_train, random_state=seed)
     test_benign_df = benign_df.drop(train_benign_df.index)
@@ -192,8 +212,8 @@ def main(fname):
     params['in_channels'] = train['Embedding'].values[0].shape[0]
     params['hidden_channels'] = [512, 256]
 
-    params['last_detector_checkpoint_path'] = f'./models/initial_detector_{exp}.pt'
-    params['training_loss_path'] = f'./plots/training_initial_detector_loss_{exp}.png'
+    params['last_detector_checkpoint_path'] = f'./models/{_current_date}/initial_detector_{exp}.pt'
+    params['training_loss_path'] = f'./plots/{_current_date}/training_initial_detector_loss_{exp}.png'
 
     detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
     trainer = TrainerDetector(params, detector)
@@ -279,8 +299,8 @@ def main(fname):
         train_aug_dataset = EmbeddingDataset(train_aug)
         train_aug_loader = DataLoader(train_aug_dataset, batch_size=params['batch_size'], shuffle=True)
 
-        params['last_detector_checkpoint_path'] = f'./models/detector_with_only_oversampling_{exp}.pt'
-        params['training_loss_path'] = f'./plots/training_detector_with_only_oversampling_loss_{exp}.png'
+        params['last_detector_checkpoint_path'] = f'./models/{_current_date}/detector_with_only_oversampling_{exp}.pt'
+        params['training_loss_path'] = f'./plots/{_current_date}/training_detector_with_only_oversampling_loss_{exp}.png'
 
         detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
         trainer = TrainerDetector(params, detector)
@@ -342,8 +362,8 @@ def main(fname):
     train_malware_dataset = EmbeddingDataset(train_malware_df)
     train_malware_loader = DataLoader(train_malware_dataset, shuffle=True)
 
-    params['last_vae_checkpoint_path'] = f'./models/vae_{exp}.pt'
-    params['training_loss_path'] = f'./plots/training_vae_loss_{exp}.png'
+    params['last_vae_checkpoint_path'] = f'./models/{_current_date}/vae_{exp}.pt'
+    params['training_loss_path'] = f'./plots/{_current_date}/training_vae_loss_{exp}.png'
 
     if params['train_vae']:
         with open(params['log_path'], 'a') as f:
@@ -386,8 +406,8 @@ def main(fname):
             train_dataset = EmbeddingDataset(train)
             train_loader = DataLoader(train_dataset, batch_size=params['batch_size'], shuffle=True)
 
-            params['last_detector_checkpoint_path'] = f'./models/detector_with_vae_and_oversampling_{exp}.pt'
-            params['training_loss_path'] = f'./plots/training_detector_with_vae_and_oversampling_loss_{exp}.png'
+            params['last_detector_checkpoint_path'] = f'./models/{_current_date}/detector_with_vae_and_oversampling_{exp}.pt'
+            params['training_loss_path'] = f'./plots/{_current_date}/training_detector_with_vae_and_oversampling_loss_{exp}.png'
 
             detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
             trainer = TrainerDetector(params, detector)
@@ -455,8 +475,8 @@ def main(fname):
         train_dataset = EmbeddingDataset(train)
         train_loader = DataLoader(train_dataset, batch_size=params['batch_size'], shuffle=True)
 
-        params['last_detector_checkpoint_path'] = f'./models/detector_with_vae_{exp}.pt'
-        params['training_loss_path'] = f'./plots/training_detector_with_vae_loss_{exp}.png'
+        params['last_detector_checkpoint_path'] = f'./models/{_current_date}/detector_with_vae_{exp}.pt'
+        params['training_loss_path'] = f'./plots/{_current_date}/training_detector_with_vae_loss_{exp}.png'
 
         detector = Detector(params['in_channels'], params['hidden_channels']).to(device)
         trainer = TrainerDetector(params, detector)
@@ -518,7 +538,7 @@ def main(fname):
                                                      'Accuracy', 'Macro-avg-precision', 'Macro-avg-recall', 'Macro-avg-f1-score',
                                                      'Macro-avg-support', 'Weighted-avg-precision', 'Weighted-avg-recall',
                                                      'Weighted-avg-f1-score', 'Weighted-avg-support', 'AUPRC', 'AUC'])
-    results_df.to_csv(f'./results/results_{exp}.csv', index=False)
+    results_df.to_csv(f'./results/{_current_date}/results_{exp}.csv', index=False)
 
 
 if __name__=='__main__':
