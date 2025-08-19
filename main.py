@@ -139,6 +139,7 @@ def main(fname):
     n_mal_samples_train = params['n_mal_samples_train']
     n_ben_samples_train = params['n_ben_samples_train']
     family_to_consider = params['family_to_consider']
+    random_sampling_malware = params['random_sampling_malware']
     results_list = []
 
     _current_date = datetime.datetime.now()
@@ -383,8 +384,11 @@ def main(fname):
                 variants.append(v.numpy()[0])
                 z_variants.append(z_v.numpy()[0])
 
-        variants = pd.DataFrame({'Embedding': [row.tolist() for row in variants]})
-        variants['Label'] = 1
+        variants_df = pd.DataFrame({'Embedding': [row.tolist() for row in variants]})
+        variants_df['Label'] = 1
+
+        variants2 = pd.DataFrame({'Embedding': [row.tolist() for row in variants]})
+        variants2['Label'] = 2
 
         if params['do_oversampling_vae']:
             n_oversampling = params['n_oversampling']
@@ -394,12 +398,12 @@ def main(fname):
                 train_malware_df_aug = pd.concat([train_malware_df_aug, train_malware_df.copy()])
             train_malware_df_aug = train_malware_df_aug.reset_index(drop=True)
             print('Oversampling variants: ', train_malware_df_aug.shape[0])
-            train = pd.concat([train_malware_df, train_malware_df_aug, train_benign_df, variants])
+            train = pd.concat([train_malware_df, train_malware_df_aug, train_benign_df, variants_df])
 
             with open(params['log_path'], 'a') as f:
                 f.write('\n[INFO] Train and Test detector after adding VAE-generated variants and oversampling.\n')
                 f.write(f'\n[INFO] Oversampling variants: {train_malware_df_aug.shape[0]} \n')
-                f.write(f'\n[INFO] VAE-generated variants: {variants.shape[0]}\n')
+                f.write(f'\n[INFO] VAE-generated variants: {variants_df.shape[0]}\n')
 
             train = train.sample(frac=1, random_state=seed).reset_index(drop=True)
 
@@ -465,10 +469,13 @@ def main(fname):
                                  weighted_avg_support, auc_pr, _auc])
 
 
-        train = pd.concat([train_malware_df, train_benign_df, variants])
+        train = pd.concat([train_malware_df, train_benign_df, variants_df])
+        train2 = pd.concat([train_malware_df, train_benign_df, variants2])
+        train2.to_parquet(f'augumented_training_data_{family_to_consider}_{random_sampling_malware}.parquet')
+        test.to_parquet(f'test_data_{family_to_consider}_{random_sampling_malware}.parquet')
         with open(params['log_path'], 'a') as f:
             f.write('\n[INFO] Train and Test detector after adding VAE-generated variants.\n')
-            f.write(f'\n[INFO] VAE-generated variants: {variants.shape[0]}\n')
+            f.write(f'\n[INFO] VAE-generated variants: {variants_df.shape[0]}\n')
 
         train = train.sample(frac=1, random_state=seed).reset_index(drop=True)
 

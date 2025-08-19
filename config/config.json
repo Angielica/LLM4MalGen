@@ -15,7 +15,7 @@
   "do_oversampling_vae": 1,
   "do_oversampling": 1,
   "n_oversampling": 1,
-  "family_to_consider": "trickbot",
+  "family_to_consider": "icedid",
   "n_mal_samples_train": 5,
   "n_ben_samples_train": 200,
   "random_sampling_malware": 0,
