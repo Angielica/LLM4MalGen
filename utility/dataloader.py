@@ -18,7 +18,7 @@ class EmbeddingDataset(Dataset):
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
 
-        x = torch.tensor(row['Embedding'])
+        x = torch.tensor(row['Embedding'], dtype=torch.float32)
         y = torch.tensor(row['Label']).float()
 
         return x, y

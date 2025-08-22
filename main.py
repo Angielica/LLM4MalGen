@@ -42,95 +42,10 @@ def main(fname):
 
     # Convert exe file into csv file
     if params['generate_csv']:
-
-        benign_assembly = os.listdir(os.path.join(data_area_folder, benign_data_folder))
-        for file in tqdm(benign_assembly, total=len(benign_assembly), desc='Benign assembly - CSV generation'):
-            if 'exe.asm' in file:
-                file_name = file.split('.exe.asm')[0] + '.csv'
-                df_path = os.path.join(data_area_folder, 'CSV', benign_data_folder, file_name)
-                exe_path = os.path.join(data_area_folder, benign_data_folder, file)
-                generate_csv_for_each_sample(exe_path, df_path)
-
-        malware_families = os.listdir(os.path.join(data_area_folder, malware_data_folder))
-
-        for family in tqdm(malware_families, total=len(malware_families), desc='Malware families'):
-            if not os.path.exists(os.path.join(data_area_folder, 'CSV', malware_data_folder, family)):
-                os.mkdir(os.path.join(data_area_folder, 'CSV', malware_data_folder, family))
-
-            mal_files = os.listdir(os.path.join(data_area_folder, malware_data_folder, family))
-
-            for file in tqdm(mal_files, total=len(mal_files), desc=f'Family: {family} - CSV generation'):
-                if '.asm' in file:
-                    file_name = file.split('.asm')[0] + '.csv'
-                    df_path = os.path.join(data_area_folder, 'CSV', malware_data_folder, family, file_name)
-                    exe_path = os.path.join(data_area_folder, malware_data_folder, family, file)
-                    generate_csv_for_each_sample(exe_path, df_path)
+        generate_csv_files(params)
 
     if params['generate_embeddings']:
-        section_to_analyze = params['section_to_analyze']
-
-        language_model_id = params['language_model_id']
-        model = SentenceTransformer(language_model_id)
-
-        # Generate embedding for benign data
-        new_data = []
-        benign_csv = os.listdir(os.path.join(data_area_folder, 'CSV', benign_data_folder))
-        for file in tqdm(benign_csv, total=len(benign_csv), desc='Benign - Embedding generation'):
-            if 'csv' in file:
-                df_path = os.path.join(data_area_folder, 'CSV', benign_data_folder, file)
-                df = pd.read_csv(df_path)
-                df = df[df['Section'] == section_to_analyze]
-                df = df.dropna(subset=['Instruction'])
-
-                instruction = df['Instruction'].values.tolist()
-                operands = df['Operands'].values.tolist()
-
-                text_input = []
-                for i, o in zip(instruction, operands):
-                    if not pd.isna(o):
-                        text_input.append(str(i) + ' ' + str(o))
-                    else:
-                        text_input.append(str(i))
-
-                text_input = ' '.join(text_input)
-
-                embedding = generate_embeddings(model, text_input)
-                new_data.append([file.split('.csv')[0], text_input, embedding, 0])
-
-        new_data_df = pd.DataFrame(new_data, columns=['Sample Name', 'Instruction', 'Embedding', 'Label'])
-        new_data_df.to_parquet(os.path.join(data_area_folder, 'benign.parquet'))
-
-        # Generate embedding for malware
-        new_data = []
-        malware_families = os.listdir(os.path.join(data_area_folder, 'CSV', malware_data_folder))
-
-        for family in tqdm(malware_families, total=len(malware_families), desc='Malware families'):
-            mal_files = os.listdir(os.path.join(data_area_folder, 'CSV', malware_data_folder, family))
-
-            for file in tqdm(mal_files, total=len(mal_files), desc=f'Malware {family} - Embedding generation'):
-                if 'csv' in file:
-                    df_path = os.path.join(data_area_folder, 'CSV', malware_data_folder, family, file)
-                    df = pd.read_csv(df_path)
-                    df = df[df['Section'] == section_to_analyze]
-                    df = df.dropna(subset=['Instruction'])
-
-                    instruction = df['Instruction'].values.tolist()
-                    operands = df['Operands'].values.tolist()
-
-                    text_input = []
-                    for i, o in zip(instruction, operands):
-                        if not pd.isna(o):
-                            text_input.append(str(i) + ' ' + str(o))
-                        else:
-                            text_input.append(str(i))
-
-                    text_input = ' '.join(text_input)
-
-                    embedding = generate_embeddings(model, text_input)
-                    new_data.append([family, file.split('.csv')[0], text_input, embedding, 1])
-
-        new_data_df = pd.DataFrame(new_data, columns=['Family', 'Sample Name', 'Instruction', 'Embedding', 'Label'])
-        new_data_df.to_parquet(os.path.join(data_area_folder, 'malware.parquet'))
+        generate_embeddings_file_with_llm(params)
 
     epochs_detector = params['epochs_detector']
     do_oversampling_vae = params['do_oversampling_vae']
@@ -160,14 +75,18 @@ def main(fname):
 
     benign_data_path = os.path.join(data_area_folder, 'benign.parquet')
     benign_df = pd.read_parquet(benign_data_path)
+    benign_df = benign_df[benign_df['Instruction'] != '']
 
     print(f'There are {benign_df.shape[0]} benign samples')
 
     malware_data_path = os.path.join(data_area_folder, 'malware.parquet')
     malware_df = pd.read_parquet(malware_data_path)
     malware_df = malware_df[malware_df['Family'] == family_to_consider]
+    malware_df = malware_df[malware_df['Instruction'] != '']
 
     print(f'\n There are {malware_df.shape[0]} malware samples belonging to the family: {family_to_consider}')
+
+    print(f'Random sampling? ', params['random_sampling_malware'])
 
     if params['random_sampling_malware']:
         train_malware_df = malware_df.sample(n=n_mal_samples_train, random_state=seed)
