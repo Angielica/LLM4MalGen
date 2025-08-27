@@ -1,9 +1,9 @@
 # 
 
-This repository contains the code accompanying the paper " ".
+This repository contains the code accompanying the paper "_Days of Future Past_: Towards Robust Detection of Malware Variants via LLM-based Embedding Generation".
 
 It provides implementations to re-execute the models described in the paper. 
-To run the code, you need PyTorch >= 
+To run the code, you need PyTorch >= 2
 
 ### Repository Structure
 The repository is organized as follows:
