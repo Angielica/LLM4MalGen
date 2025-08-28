@@ -62,3 +62,5 @@ All experiment parameters must be defined in the configuration file. Key paramet
 *  **epochs_detector**: number of epochs for training the detector,
 *  **epochs_vae**: number of epochs for training the VAE,
 *  **n_variants_to_generate**: number of VAE variants to generate,
+
+For the experiments, we collected samples of malicious software from the MOTIF dataset (https://github.com/boozallen/MOTIF).
